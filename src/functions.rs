@@ -1,20 +1,8 @@
-use json::JsonValue;
-
 use crate::{
+    config::Member,
     names::{get_modules, get_unqualified_name, to_camel_case},
     types::get_jni_type,
 };
-
-pub struct RustFunctionInput {
-    pub name: String,
-    pub rust_type: String,
-}
-
-pub struct RustFunction {
-    pub name: String,
-    pub inputs: Vec<RustFunctionInput>,
-    pub output: Option<String>,
-}
 
 fn get_jni_function_name(java_package: &str, name: &str) -> String {
     let module_names = get_modules(name).join("_");
@@ -27,36 +15,10 @@ fn get_jni_function_name(java_package: &str, name: &str) -> String {
     )
 }
 
-pub fn parse_jni_function_json(element: &JsonValue) -> Option<RustFunction> {
-    let inputs_json = element["inputs"].members().collect::<Vec<_>>();
-    let inputs: Vec<_> = inputs_json
-        .iter()
-        .map(|i| RustFunctionInput {
-            name: i["name"].to_string(),
-            rust_type: i["type"].to_string(),
-        })
-        .collect();
-    let name = match &element["name"] {
-        JsonValue::String(s) => s.clone(),
-        JsonValue::Short(s) => s.to_string(),
-        _ => return None,
-    };
-    let output = match &element["output"] {
-        JsonValue::String(s) => Some(s.clone()),
-        JsonValue::Short(s) => Some(s.to_string()),
-        _ => None,
-    };
-    Some(RustFunction {
-        name,
-        inputs,
-        output,
-    })
-}
-
-pub fn generate_jni_function(java_package: &str, function: &RustFunction) -> String {
+pub fn generate_jni_function(java_package: &str, function: &Member) -> String {
     let mut inputs = Vec::new();
 
-    for arg in &function.inputs {
+    for arg in function.inputs.as_ref().unwrap_or(&vec![]) {
         inputs.push(format!(
             "    {}: {}",
             arg.name,
@@ -83,6 +45,8 @@ pub fn generate_jni_function(java_package: &str, function: &RustFunction) -> Str
         unqualified_name,
         function
             .inputs
+            .as_ref()
+            .unwrap_or(&vec![])
             .iter()
             .map(|i| i.name.as_ref())
             .collect::<Vec<_>>()
@@ -93,6 +57,8 @@ pub fn generate_jni_function(java_package: &str, function: &RustFunction) -> Str
 
 #[cfg(test)]
 mod tests {
+    use crate::config::Input;
+
     use super::*;
     use rstest::rstest;
 
@@ -105,38 +71,14 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_jni_function() {
-        let json = json::parse(
-            r#"{
-            "name": "test::func",
-            "type": "function",
-            "inputs": [
-                {"name": "arg1", "type": "i32"},
-                {"name": "arg2", "type": "f64"}
-            ],
-            "output": "bool"
-        }"#,
-        )
-        .unwrap();
-
-        let function = parse_jni_function_json(&json).unwrap();
-        assert_eq!(function.name, "test::func");
-        assert_eq!(function.inputs.len(), 2);
-        assert_eq!(function.inputs[0].name, "arg1");
-        assert_eq!(function.inputs[0].rust_type, "i32");
-        assert_eq!(function.inputs[1].name, "arg2");
-        assert_eq!(function.inputs[1].rust_type, "f64");
-        assert_eq!(function.output, Some("bool".to_string()));
-    }
-
-    #[test]
     fn test_generate_jni_function() {
-        let function = RustFunction {
+        let function = Member {
+            member_type: "function".to_string(),
             name: "test::func".to_string(),
-            inputs: vec![RustFunctionInput {
+            inputs: Some(vec![Input {
                 name: "arg1".to_string(),
                 rust_type: "i32".to_string(),
-            }],
+            }]),
             output: Some("bool".to_string()),
         };
 

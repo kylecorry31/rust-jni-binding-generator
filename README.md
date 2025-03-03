@@ -14,27 +14,28 @@ This is a work in progress. Only functions with primitive types are supported.
   - `output`: The Rust type of the output.
 
 ```json
-{
-  "put-your-crate-name-here": {
+[
+  {
+    "name": "put-your-crate-name-here",
     "members": [
       {
         "name": "put_your_crate_name_here::fully::qualified::function_name",
-        "type": "function",
+        "rust_type": "function",
         "inputs": [
           {
             "name": "a",
-            "type": "f32"
+            "rust_type": "f32"
           },
           {
             "name": "b",
-            "type": "f32"
+            "rust_type": "f32"
           }
         ],
         "output": "f32"
       }
     ]
   }
-}
+]
 ```
 
 ## Generate bindings

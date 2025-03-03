@@ -1,9 +1,10 @@
-use functions::{generate_jni_function, parse_jni_function_json};
-use json::JsonValue;
+use config::parse;
+use functions::generate_jni_function;
 use std::fs::File;
 use std::io::Write;
 use std::{env, fs, path::Path, process::Command};
 
+mod config;
 mod functions;
 mod names;
 mod types;
@@ -29,7 +30,7 @@ fn main() -> std::io::Result<()> {
     }
 
     // Read config file
-    let config: JsonValue = json::parse(&fs::read_to_string(config_path)?).unwrap();
+    let config = parse(&fs::read_to_string(config_path)?).unwrap();
 
     // Create cargo lib
     fs::create_dir_all(codegen_path)?;
@@ -39,9 +40,9 @@ fn main() -> std::io::Result<()> {
         .status()?;
 
     // Add dependencies
-    for package in config.entries() {
+    for package in config.iter() {
         Command::new("cargo")
-            .args(["add", package.0])
+            .args(["add", &package.name])
             .current_dir(&lib_path)
             .status()?;
     }
@@ -61,12 +62,11 @@ fn main() -> std::io::Result<()> {
 
     let mut bindings = Vec::new();
 
-    for (_, package) in config.entries() {
-        for member in package["members"].members() {
-            imports.push(member["name"].as_str().unwrap().to_string());
-            if member["type"] == "function" {
-                let parsed = parse_jni_function_json(member).expect("Invalid function definition");
-                bindings.push(generate_jni_function(java_package, &parsed));
+    for package in config.iter() {
+        for member in &package.members {
+            imports.push(member.name.clone());
+            if member.member_type == "function" {
+                bindings.push(generate_jni_function(java_package, member));
             }
         }
     }
