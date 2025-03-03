@@ -1,6 +1,8 @@
 # Rust JNI Binding Generator
 A JNI binding generator for Rust.
 
+This is a work in progress. Only functions with primitive types are supported.
+
 ## Config file
 - `package-name`: The rust crate to generate bindings for.
 - `members`: The list of public members to create JNI wrappers for.
