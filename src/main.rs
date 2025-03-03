@@ -2,8 +2,9 @@ use config::parse;
 use functions::generate_jni_function;
 use std::fs::File;
 use std::io::Write;
-use std::{env, fs, path::Path, process::Command};
+use std::{env, fs, path::Path};
 
+mod cargo;
 mod config;
 mod functions;
 mod names;
@@ -34,23 +35,14 @@ fn main() -> std::io::Result<()> {
 
     // Create cargo lib
     fs::create_dir_all(codegen_path)?;
-    Command::new("cargo")
-        .args(["new", "--lib", lib_name])
-        .current_dir(codegen_path)
-        .status()?;
+    cargo::new_lib(lib_name, codegen_path)?;
 
     // Add dependencies
     for package in config.iter() {
-        Command::new("cargo")
-            .args(["add", &package.name])
-            .current_dir(&lib_path)
-            .status()?;
+        cargo::add(&package.name, lib_path.to_str().unwrap())?;
     }
 
-    Command::new("cargo")
-        .args(["add", "jni"])
-        .current_dir(&lib_path)
-        .status()?;
+    cargo::add("jni", lib_path.to_str().unwrap())?;
 
     // Generate lib.rs
     let mut imports = vec![
@@ -88,15 +80,8 @@ fn main() -> std::io::Result<()> {
     file.write_all(contents.as_bytes())?;
 
     // Format code
-    Command::new("cargo")
-        .args(["clippy", "--fix", "--allow-dirty"])
-        .current_dir(&lib_path)
-        .status()?;
-
-    Command::new("cargo")
-        .args(["fmt"])
-        .current_dir(&lib_path)
-        .status()?;
+    cargo::clippy_fix(lib_path.to_str().unwrap())?;
+    cargo::format(lib_path.to_str().unwrap())?;
 
     Ok(())
 }
