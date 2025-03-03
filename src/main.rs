@@ -4,8 +4,8 @@ use std::fs::File;
 use std::io::Write;
 use std::{env, fs, path::Path, process::Command};
 
-mod casing;
 mod functions;
+mod names;
 mod types;
 
 fn main() -> std::io::Result<()> {
