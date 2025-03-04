@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     config::Member,
     names::{get_modules, get_unqualified_name, to_camel_case, to_pascal_case},
-    types::{get_jni_type, get_kotlin_type},
+    types::{convert_java_type_to_rust, convert_rust_type_to_java, get_jni_type, get_kotlin_type},
 };
 
 const JNI_FUNCTION_TEMPLATE: &str = r#"#[unsafe(no_mangle)]
@@ -22,7 +22,6 @@ fn populate_template(template: &str, parameters: &HashMap<String, String>) -> St
     let mut result = template.to_string();
     for (key, value) in parameters {
         result = result.replace(&format!("{{{}}}", key), value);
-        println!("{}", result);
     }
     result
 }
@@ -86,13 +85,17 @@ pub fn generate_jni_function(java_package: &str, function: &Member) -> String {
                 .as_ref()
                 .unwrap_or(&vec![])
                 .iter()
-                .map(|i| i.name.as_ref())
+                .map(|i| convert_java_type_to_rust(&i.name, &i.rust_type))
                 .collect::<Vec<_>>()
                 .join(", "),
         ),
         (
             "return".to_string(),
-            if output.is_some() { "result" } else { "" }.to_string(),
+            if output.is_some() {
+                convert_rust_type_to_java("result", function.output.as_ref().unwrap())
+            } else {
+                "".to_string()
+            },
         ),
     ]);
 

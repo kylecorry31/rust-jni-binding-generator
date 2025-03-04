@@ -1,5 +1,6 @@
 use config::parse;
 use functions::{generate_jni_function, generate_kotlin_function};
+use kotlin::generate_kotlin_file;
 use names::to_pascal_case;
 use std::fs::File;
 use std::io::Write;
@@ -7,7 +8,9 @@ use std::{env, fs, path::Path};
 
 mod cargo;
 mod config;
+mod converters;
 mod functions;
+mod kotlin;
 mod names;
 mod types;
 
@@ -66,17 +69,12 @@ fn main() -> std::io::Result<()> {
         }
 
         let kotlin_object_name = to_pascal_case(&package.name);
-        let kotlin_contents = format!(
-            "object {} {{\n    init {{\n        System.loadLibrary(\"{}\")\n    }}\n\n{}\n}}",
+        let kotlin_contents = generate_kotlin_file(
             &kotlin_object_name,
+            java_package,
             lib_name,
-            kotlin_bindings
-                .iter()
-                .map(|b| format!("    {}", b))
-                .collect::<Vec<_>>()
-                .join("\n")
+            &kotlin_bindings,
         );
-        // TODO: Split by module name and create nested objects
         let mut kotlin_file = File::create(lib_path.join(format!("{}.kt", kotlin_object_name)))?;
         kotlin_file.write_all(kotlin_contents.as_bytes())?;
     }
